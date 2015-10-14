@@ -5,6 +5,7 @@ VERSION "4.01"
 
 WINDOW 1 "Search Customer" 40 40 501 295
 BEGIN
+    NAME "FulltextSearch"
     GRID 100, "", 2, 2, 497, 295
     BEGIN
         GRIDCOLWIDTH 0, 100

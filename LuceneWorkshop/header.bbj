@@ -1,0 +1,8 @@
+REM display character program header
+REM header.bbx
+DEF FNC(A$)=INT((80-LEN(A$))/2)
+ENTER TITLE1$,TITLE2$,DATE$,PROGRAM$,BORDER$
+PRINT 'WHITE','BACKGR','BLUE','DEFAULT','CS','SB',@(FNC(TITLE1$),0),TITLE1$,@(0,1),DATE$,@(FNC(TITLE2$),1),TITLE2$,@(80-LEN(PROGRAM$)-1,1),PROGRAM$,@(0,2),BORDER$,'SF',
+REM PRINT 'DEFAULT','CS','SB',@(FNC(TITLE1$),0),TITLE1$,@(0,1),DATE$,@(FNC(TITLE2$),1),TITLE2$,@(80-LEN(PROGRAM$)-1,1),PROGRAM$,@(0,2),BORDER$,'SF',
+REM this file is located in C:\bbjdemos
+exit

@@ -1,0 +1,877 @@
+use ::DialogWizard/BBDialog.bbj::BBDialog
+use ::DialogWizard/DialogUtils.bbj::DialogUtils
+use ::DialogWizard/DialogWizardRun.bbj::DialogWizardRun
+rem /** DLG_WIZ_OPTION_BEGIN("translator") **/
+rem use ::translations/bbtranslator.bbj::BBTranslator
+rem /** DLG_WIZ_OPTION_END("translator") **/
+use ::bbwindowutils.bbj::BBWindowUtils
+
+class public FulltextSearch extends BBDialog
+
+    field protected BBjAPI        API! = BBjAPI()
+    field protected BBjNumber     TRUE = #API!.TRUE
+    field protected BBjNumber     FALSE = #API!.FALSE
+    field protected BBjSysGui     SysGui! = #API!.openSysGui("X0")
+    field protected BBjThinClient ThinClient! = #API!.getThinClient()
+    field protected BBjString     ClientLocale$ = #ThinClient!.getClientLocale()
+    field protected BBjString     PgmDirectory$ = pgm(-2)(1,max(pos("\"=pgm(-2),-1),pos("/"=pgm(-2),-1)))
+    
+    rem /** DLG_WIZ_OPTION_BEGIN("translator") **/
+    rem field protected BBTranslator  Translator! = BBTranslator.getInstance("Message",#ClientLocale$,"en",#PgmDirectory$)
+    rem /** DLG_WIZ_OPTION_END("translator") **/
+    
+    field protected BBjNamespace  GroupNS! = #API!.getGroupNamespace()
+    field protected BBjMDI        MDI!
+
+    field public BBjString traceDir$
+    field public BBjString traceMode$
+    field public BBjNumber traceChan
+    field public BBjString traceFile$
+
+	rem /** DLGWIZ_RES FulltextSearch.arc 101 **/
+
+	rem /** DLGWIZ_FLD_BEGIN **/
+	rem /** DLGWIZ_FLD_END **/
+
+
+	rem /** DLGWIZ_FLC_BEGIN **/
+	field protected BBjTopLevelWindow C_FulltextSearch!
+	field protected BBjGrid C_FulltextSearchGrid!
+	rem /** DLGWIZ_FLC_END **/
+
+
+    field public BBjTopLevelWindow Wnd!
+
+    field public BBjString Search$
+    field public BBjNumber CustNum
+
+    rem /**
+    rem * Constructor FulltextSearch
+    rem */
+    method public FulltextSearch()
+        #super!("FulltextSearch.arc",101)
+
+        rem Check if BBjSysGui object is still valid. If not re-create it.
+        #SysGui!.getContext(err=*next); sg_ok=1
+        if !sg_ok then
+            #SysGui!=#API!.openSysGui("X0")
+        endif
+
+        if stbl("+USER_LOCALE",err=*endif)<>"" then
+            #ClientLocale$ = stbl("+USER_LOCALE")
+            rem /** DLG_WIZ_OPTION_BEGIN("translator") **/
+            rem #Translator! = BBTranslator.getInstance("FulltextSearch",#ClientLocale$,"en",#PgmDirectory$)
+            rem /** DLG_WIZ_OPTION_END("translator") **/
+        endif
+
+        #Wnd!=#super!.getWndTop()
+        if #API!.isInMDI() then #MDI!=#API!.getMDI()
+
+        rem /** DLG_WIZ_OPTION_BEGIN("translator") **/
+        rem DialogUtils.buildDialogProperties(#Translator!,#super!.getCtrlVect())
+        rem /** DLG_WIZ_OPTION_END("translator") **/
+
+        if #Wnd!<>null() then
+            #initToolBar()
+            #setCallbacks()
+        endif
+    methodend
+
+    rem /**
+    rem * Method initToolBar:
+    rem * Setup toolbar
+    rem */
+    method protected void initToolBar()
+	    rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Custom Form]") **/
+        rem #super!.addToolBar(1,1,#Wnd!.getWidth(),#Wnd!.getHeight()+32,#Wnd!.getWidth(),31,0,#this!,"")
+        rem #super!.endToolBar()
+	    rem /** DLG_WIZ_OPTION_END("toolbar[Custom Form]") **/
+	    
+	    rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Maintenance Form]") **/
+        rem #super!.addToolBar(2,1,#Wnd!.getWidth(),#Wnd!.getHeight()+32,#Wnd!.getWidth(),31,0,#this!,stbl("+DIR_IMG")+"im_nav_tool_top.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,3,1,26,26,"","NEW",#Translator!,"Neu bzw. Formular leeren",1,0,stbl("+DIR_IMG")+"im_tb_new_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,29,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,37,1,26,26,"","DEL",#Translator!,"Aktuellen Satz l�?schen",1,0,stbl("+DIR_IMG")+"im_tb_del_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,63,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,71,1,26,26,"","SAV",#Translator!,"Aktuelle Daten abspeichern",1,0,stbl("+DIR_IMG")+"im_tb_sav_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,97,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,105,1,26,26,"","FST",#Translator!,"Ersten Satz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_fst_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,131,1,26,26,"","PRV",#Translator!,"Vorherigen Satz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_prv_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,157,1,26,26,"","NXT",#Translator!,"N„chsten Satz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_nxt_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,183,1,26,26,"","LST",#Translator!,"Letzten Satz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_lst_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,209,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,217,1,26,26,"","SCH",#Translator!,"Satzabfrage",1,0,stbl("+DIR_IMG")+"im_tb_sch_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,243,1,26,26,"","DMR",#Translator!,"Hauptsatz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_dmr_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,269,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,277,1,26,26,"","OPT",#Translator!,"Zus„tzliche Optionen anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_opt_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,303,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.endToolBar()
+        rem /** DLG_WIZ_OPTION_END("toolbar[Maintenance Form]") **/
+        
+        rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Maintenance Grid]") **/
+        rem #super!.addToolBar(3,1,#Wnd!.getWidth(),#Wnd!.getHeight()+32,#Wnd!.getWidth(),31,0,#this!,stbl("+DIR_IMG")+"im_nav_tool_top.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,3,1,26,26,"","ADE",#Translator!,"Am Ende anf�gen",1,0,stbl("+DIR_IMG")+"im_tb_ade_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,29,1,26,26,"","INS",#Translator!,"Davor hinzuf�gen",1,0,stbl("+DIR_IMG")+"im_tb_ins_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,55,1,26,26,"","EDB",#Translator!,"Editieren",1,0,stbl("+DIR_IMG")+"im_tb_edb_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,81,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,89,1,26,26,"","DEL",#Translator!,"Aktuellen Satz l�?schen",1,0,stbl("+DIR_IMG")+"im_tb_del_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,115,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,123,1,26,26,"","SAV",#Translator!,"Aktuelle Daten abspeichern",1,0,stbl("+DIR_IMG")+"im_tb_sav_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,149,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,157,1,26,26,"","FND",#Translator!,"Felds„tze finden",1,0,stbl("+DIR_IMG")+"im_tb_fnd_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,183,1,26,26,"","DMR",#Translator!,"Hauptsatz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_dmr_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,209,1,26,26,"","EXP",#Translator!,"Verkn�pften Datensatz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_exp_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,235,1,26,26,"","CAL",#Translator!,"Kalender anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_cal_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,261,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,269,1,26,26,"","LNK",#Translator!,"Link ausf�hren",1,0,stbl("+DIR_IMG")+"im_tb_lnk_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,295,1,26,26,"","DRL",#Translator!,"Drilldown",1,0,stbl("+DIR_IMG")+"im_tb_drl_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,321,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,329,1,26,26,"","OPT",#Translator!,"Zus„tzliche Optionen anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_opt_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,355,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.endToolBar()
+        rem /** DLG_WIZ_OPTION_END("toolbar[Maintenance Grid]") **/
+        
+        rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Header Detail]") **/
+        rem #super!.addToolBar(4,1,#Wnd!.getWidth(),#Wnd!.getHeight()+32,#Wnd!.getWidth(),31,0,#this!,stbl("+DIR_IMG")+"im_nav_tool_top.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,3,1,26,26,"","NEW",#Translator!,"Neu bzw. Formular leeren",1,0,stbl("+DIR_IMG")+"im_tb_new_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,29,1,26,26,"","ADE",#Translator!,"Am Ende anf�gen",1,0,stbl("+DIR_IMG")+"im_tb_ade_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,55,1,26,26,"","INS",#Translator!,"Davor hinzuf�gen",1,0,stbl("+DIR_IMG")+"im_tb_ins_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,81,1,26,26,"","EDB",#Translator!,"Editieren",1,0,stbl("+DIR_IMG")+"im_tb_edb_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,107,1,26,26,"","DEL",#Translator!,"Aktuellen Satz l�?schen",1,0,stbl("+DIR_IMG")+"im_tb_del_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,133,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,141,1,26,26,"","SAV",#Translator!,"Aktuelle Daten abspeichern",1,0,stbl("+DIR_IMG")+"im_tb_sav_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,167,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,175,1,26,26,"","FST",#Translator!,"Ersten Satz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_fst_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,201,1,26,26,"","PRV",#Translator!,"Vorherigen Satz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_prv_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,227,1,26,26,"","NXT",#Translator!,"N„chsten Satz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_nxt_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,253,1,26,26,"","LST",#Translator!,"Letzten Satz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_lst_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,279,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,287,1,26,26,"","SCH",#Translator!,"Satzabfrage",1,0,stbl("+DIR_IMG")+"im_tb_sch_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,313,1,26,26,"","FND",#Translator!,"Felds„tze finden",1,0,stbl("+DIR_IMG")+"im_tb_fnd_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,339,1,26,26,"","DMR",#Translator!,"Hauptsatz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_dmr_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,365,1,26,26,"","EXP",#Translator!,"Verkn�pften Datensatz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_exp_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,391,1,26,26,"","CAL",#Translator!,"Kalender anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_cal_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,417,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,425,1,26,26,"","LNK",#Translator!,"Link ausf�hren",1,0,stbl("+DIR_IMG")+"im_tb_lnk_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,451,1,26,26,"","DRL",#Translator!,"Drilldown",1,0,stbl("+DIR_IMG")+"im_tb_drl_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,477,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,485,1,26,26,"","OPT",#Translator!,"Zus„tzliche Optionen anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_opt_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,511,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.endToolBar()
+        rem /** DLG_WIZ_OPTION_END("toolbar[Header Detail]") **/
+        
+        rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Options Entry Form]") **/
+        rem #super!.addToolBar(5,1,#Wnd!.getWidth(),#Wnd!.getHeight()+32,#Wnd!.getWidth(),31,0,#this!,stbl("+DIR_IMG")+"im_nav_tool_top.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,3,1,26,26,"","NEW",#Translator!,"Neu bzw. Formular leeren",1,0,stbl("+DIR_IMG")+"im_tb_new_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,29,1,26,26,"","SAV",#Translator!,"Aktuelle Daten abspeichern",1,0,stbl("+DIR_IMG")+"im_tb_sav_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,55,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,63,1,26,26,"","RUN",#Translator!,"Prozess ausf�hren",1,0,stbl("+DIR_IMG")+"im_tb_run_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,89,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,97,1,26,26,"","DMR",#Translator!,"Hauptsatz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_dmr_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,123,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,131,1,26,26,"","OPT",#Translator!,"Zus„tzliche Optionen anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_opt_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,157,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.endToolBar()
+        rem /** DLG_WIZ_OPTION_END("toolbar[Options Entry Form]") **/
+        
+        rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Options Entry Grid]") **/
+        rem #super!.addToolBar(6,1,#Wnd!.getWidth(),#Wnd!.getHeight()+32,#Wnd!.getWidth(),31,0,#this!,stbl("+DIR_IMG")+"im_nav_tool_top.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,3,1,26,26,"","ADE",#Translator!,"Am Ende anf�gen",1,0,stbl("+DIR_IMG")+"im_tb_ade_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,29,1,26,26,"","INS",#Translator!,"Davor hinzuf�gen",1,0,stbl("+DIR_IMG")+"im_tb_ins_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,55,1,26,26,"","EDB",#Translator!,"Editieren",1,0,stbl("+DIR_IMG")+"im_tb_edb_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,81,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,89,1,26,26,"","DEL",#Translator!,"Aktuellen Satz l�?schen",1,0,stbl("+DIR_IMG")+"im_tb_del_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,115,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,123,1,26,26,"","SAV",#Translator!,"Aktuelle Daten abspeichern",1,0,stbl("+DIR_IMG")+"im_tb_sav_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,149,1,26,26,"","RUN",#Translator!,"Prozess ausf�hren",1,0,stbl("+DIR_IMG")+"im_tb_run_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,175,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,183,1,26,26,"","FND",#Translator!,"Felds„tze finden",1,0,stbl("+DIR_IMG")+"im_tb_fnd_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,209,1,26,26,"","DMR",#Translator!,"Hauptsatz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_dmr_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,235,1,26,26,"","EXP",#Translator!,"Verkn�pften Datensatz anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_exp_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,261,1,26,26,"","CAL",#Translator!,"Kalender anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_cal_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,287,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.addToolBarCtrl(#SysGui!.MENUBUTTON_CONTROL,295,1,26,26,"","OPT",#Translator!,"Zus„tzliche Optionen anzeigen",1,0,stbl("+DIR_IMG")+"im_tb_opt_m.png")
+        rem #super!.addToolBarCtrl(#SysGui!.IMAGE_CONTROL,321,3,8,23,"","",null(),"",0,0,stbl("+DIR_IMG")+"im_sep_space.png")
+        rem #super!.endToolBar()
+        rem /** DLG_WIZ_OPTION_END("toolbar[Options Entry Grid]") **/  
+    methodend
+
+    rem /**
+    rem * Method setCallbacks:
+    rem * Set control callbacks
+    rem */
+    method protected void setCallbacks()
+        if #API!.isInMDI() then #MDI!.registerMDIClosingCallback(#this!,"onMDIClosing")
+        #GroupNS!.setCallbackForVariableChange("debug_mode",#this!,"doDebugTrace")
+        #GroupNS!.setCallbackForVariableChange("trace_mode",#this!,"doDebugTrace")
+		rem /** DLGWIZ_CBS_BEGIN **/
+		#super!.getControlByName("FulltextSearch").setCallback(BBjAPI.ON_CLOSE,#this!,"FulltextSearch__ON_CLOSE")
+		#super!.getControlByName("FulltextSearchGrid").setCallback(BBjAPI.ON_GRID_DOUBLE_CLICK,#this!,"FulltextSearchGrid__ON_GRID_DOUBLE_CLICK")
+		rem /** DLGWIZ_CBS_END **/
+
+    methodend
+
+    rem /**
+    rem * Method doDataExchange:
+    rem * Set controls with program variables
+    rem * @param BBjNumber pInitFlag: Controls are initialized, if true
+    rem */
+    method protected void doDataExchange(BBjNumber pInitFlag)
+		rem /** DLGWIZ_DDX_BEGIN **/
+		rem /** DLGWIZ_DDX_END **/
+
+    methodend
+
+    rem /**
+    rem * Method doModal:
+    rem * Initialize and display dialog (contains PROCESS_EVENTS)
+    rem * @see doDataExchange(BBjNumber pInitFlag)
+    rem * @see onInitDialog()
+    rem * @see onExitDialog()
+    rem * @return BBjNumber Answer: 0=Passed required fields check, 1=Dialog canceled/closed
+    rem */
+    method public BBjNumber doModal()
+
+        #API!.setCustomEventCallback("ReturnAnswer","do_return")
+        #API!.setCustomEventCallback("CancelAnswer","do_cancel")
+
+        #doDataExchange(#TRUE)
+        #super!.setAllValidated(#TRUE)
+
+        #onInitDialog()
+        #Wnd!.setVisible(#TRUE)
+
+        do_process_events:
+            process_events,err=*same
+
+        do_return:
+            #doDataExchange(#FALSE)
+            if #super!.getAllValidated()=0 then
+                #super!.setAllValidated(#TRUE)
+                goto do_process_events
+            endif
+
+        do_cancel:
+            #onExitDialog()
+            #Wnd!.destroy()
+
+        methodret #super!.getAnswer()
+    methodend
+
+    rem /**
+    rem * Method onInitDialog:
+    rem * Your custom initialization
+    rem */
+    method public void onInitDialog()
+	rem /** DLGWIZ_INI_BEGIN **/
+	#C_FulltextSearch! = cast(BBjTopLevelWindow,#super!.getControlByName("FulltextSearch"))
+	#C_FulltextSearchGrid! = cast(BBjGrid,#super!.getControlByName("FulltextSearchGrid"))
+	rem /** DLGWIZ_INI_END **/
+
+        rem uncomment the next line to center window
+        rem BBWindowUtils.centerWindow(#Wnd!)
+        #doDebugTrace(null())
+        
+              SQLOPEN (1)"TC"
+        SQLPREP (1)"CALL BBJ_INDEX('CUSTOMER',?,0)"
+        SQLEXEC (1)#Search$
+        tpl$ = SQLTMPL(1)
+        DIM rec$:tpl$
+        
+        v! = new BBjVector()
+        
+        WHILE 1
+            rec$=SQLFETCH(1,end=*break) 
+            v!.addItem(rec.CUST_NUM$) 
+            v!.addItem(rec.FIRST_NAME$+" "+rec.LAST_NAME$+", "+rec.CITY$)
+        WEND
+        
+        SQLCLOSE (1)
+        
+        grid! = #C_FulltextSearch!.getControl(100)
+        grid!.setNumRows(v!.size()/2)
+        grid!.setNumColumns(2)
+        grid!.setHasColumnHeader(1)
+        grid!.setColumnWidth(0,300)
+        grid!.setFitToGrid(BBjGrid.AUTO_RESIZE_LAST_COLUMN)
+        grid!.setColumnAlignment(0,BBjGrid.GRID_ALIGN_LEFT)
+        grid!.setColumnAlignment(1,BBjGrid.GRID_ALIGN_LEFT)
+        grid!.setSelectionMode(BBjGrid.GRID_SELECT_ROW) 
+        grid!.setCellText(0,0,v!)
+        
+    methodend
+
+    rem /**
+    rem * Method onExitDialog:
+    rem * Your custom exit code
+    rem */
+    method public void onExitDialog()
+    	rem /** DLG_WIZ_OPTION_BEGIN("translator") **/
+        rem #Translator!.getTranslationBundle().save()
+        rem /** DLG_WIZ_OPTION_END("translator") **/
+        if #API!.isInMDI() then #MDI!.approveMDIClose()
+        if #traceChan then
+            call "bbtracer.bbj::stopTrace",#traceChan
+            call "bbtracer.bbj::showTrace",#traceFile$,#traceMode$
+        endif
+    methodend
+
+    rem /**
+    rem * Method postCancelAnswer:
+    rem * Set dialog answer to "canceled"
+    rem */
+    method public void postCancelAnswer()
+        #super!.setAnswer(0)
+        #API!.postCustomEvent("CancelAnswer",null())
+    methodend
+
+    rem /**
+    rem * Method postReturnAnswer:
+    rem * Set dialog answer to "normal return"
+    rem */
+    method public void postReturnAnswer()
+        #super!.setAnswer(1)
+        #API!.postCustomEvent("ReturnAnswer",null())
+    methodend
+
+    rem /**
+    rem * Method onMDIClosing:
+    rem * Handler for the MDI closing
+    rem */
+    method public void onMDIClosing(BBjMDIClosingEvent pEvent!)
+        rem uncomment the next line to veto the MDI Close
+        rem #MDI!.vetoMDIClose()
+        #postCancelAnswer()
+    methodend
+
+    rem /**
+    rem * Method doDebugTrace:
+    rem * Show/hide console, start/stop trace
+    rem * @param BBjNamespaceEvent event! 
+    rem */
+    method public void doDebugTrace(BBjNamespaceEvent event!)
+        debug_mode = #GroupNS!.getValue("debug_mode",err=*next)>0
+        trace_mode = #GroupNS!.getValue("trace_mode",err=*next)>0
+
+        if debug_mode then
+            seterr 0
+            setesc 0
+            print(0)'show'
+        else
+            print(0)'hide'
+        endif
+
+        if trace_mode then
+            traceDir$=#traceDir$, traceMode$=#traceMode$, traceChan=#traceChan, traceFile$=#traceFile$
+            call "bbtracer.bbj::startTrace",traceDir$,traceMode$,traceChan,traceFile$
+            #traceDir$=traceDir$, #traceMode$=traceMode$, #traceChan=traceChan, #traceFile$=traceFile$
+        else
+            if #traceChan then
+                traceChan=#traceChan
+                call "bbtracer.bbj::stopTrace",traceChan
+                #traceChan=traceChan
+                call "bbtracer.bbj::showTrace",#traceFile$,#traceMode$
+            endif
+        endif
+    methodend
+    
+    rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Maintenance Form]") **/
+    rem rem /**
+    rem rem * Method onTBarBtnNEWPush:
+    rem rem * Event handler for the NEW toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnNEWPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDELPush:
+    rem rem * Event handler for the DEL toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDELPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnSAVPush:
+    rem rem * Event handler for the SAV toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnSAVPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnFSTPush:
+    rem rem * Event handler for the FST toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnFSTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnPRVPush:
+    rem rem * Event handler for the PRV toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnPRVPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnNXTPush:
+    rem rem * Event handler for the NXT toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnNXTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnLSTPush:
+    rem rem * Event handler for the LST toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnLSTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnSCHPush:
+    rem rem * Event handler for the SCH toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnSCHPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDMRPush:
+    rem rem * Event handler for the DMR toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDMRPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnOPTPush:
+    rem rem * Event handler for the OPT toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnOPTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+    rem /** DLG_WIZ_OPTION_END("toolbar[Maintenance Form]") **/
+    
+    rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Maintenance Grid]") **/
+    rem rem /**
+    rem rem * Method onTBarBtnADEPush:
+    rem rem * Event handler for the ADE toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnADEPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnINSPush:
+    rem rem * Event handler for the INS toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnINSPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnEDBPush:
+    rem rem * Event handler for the EDB toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnEDBPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDELPush:
+    rem rem * Event handler for the DEL toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDELPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnSAVPush:
+    rem rem * Event handler for the SAV toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnSAVPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnFNDPush:
+    rem rem * Event handler for the FND toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnFNDPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDMRPush:
+    rem rem * Event handler for the DMR toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDMRPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnEXPPush:
+    rem rem * Event handler for the EXP toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnEXPPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnCALPush:
+    rem rem * Event handler for the CAL toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnCALPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnLNKPush:
+    rem rem * Event handler for the LNK toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnLNKPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDRLPush:
+    rem rem * Event handler for the DRL toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDRLPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnOPTPush:
+    rem rem * Event handler for the OPT toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnOPTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+    rem /** DLG_WIZ_OPTION_END("toolbar[Maintenance Grid]") **/
+    
+    rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Header Detail]") **/
+    rem rem /**
+    rem rem * Method onTBarBtnNEWPush:
+    rem rem * Event handler for the NEW toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnNEWPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnADEPush:
+    rem rem * Event handler for the ADE toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnADEPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnINSPush:
+    rem rem * Event handler for the INS toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnINSPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnEDBPush:
+    rem rem * Event handler for the EDB toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnEDBPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDELPush:
+    rem rem * Event handler for the DEL toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDELPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnSAVPush:
+    rem rem * Event handler for the SAV toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnSAVPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnFSTPush:
+    rem rem * Event handler for the FST toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnFSTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnPRVPush:
+    rem rem * Event handler for the PRV toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnPRVPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnNXTPush:
+    rem rem * Event handler for the NXT toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnNXTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnLSTPush:
+    rem rem * Event handler for the LST toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnLSTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnSCHPush:
+    rem rem * Event handler for the SCH toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnSCHPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnFNDPush:
+    rem rem * Event handler for the FND toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnFNDPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDMRPush:
+    rem rem * Event handler for the DMR toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDMRPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnEXPPush:
+    rem rem * Event handler for the EXP toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnEXPPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnCALPush:
+    rem rem * Event handler for the CAL toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnCALPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnLNKPush:
+    rem rem * Event handler for the LNK toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnLNKPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDRLPush:
+    rem rem * Event handler for the DRL toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDRLPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnOPTPush:
+    rem rem * Event handler for the OPT toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnOPTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+    rem /** DLG_WIZ_OPTION_END("toolbar[Header Detail]") **/
+    
+    rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Options Entry Form]") **/
+	rem rem /**
+    rem rem * Method onTBarBtnNEWPush:
+    rem rem * Event handler for the NEW toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnNEWPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnSAVPush:
+    rem rem * Event handler for the SAV toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnSAVPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnRUNPush:
+    rem rem * Event handler for the RUN toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnRUNPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDMRPush:
+    rem rem * Event handler for the DMR toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDMRPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnOPTPush:
+    rem rem * Event handler for the OPT toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnOPTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+    rem /** DLG_WIZ_OPTION_END("toolbar[Options Entry Form]") **/
+    
+    rem /** DLG_WIZ_OPTION_BEGIN("toolbar[Options Entry Grid]") **/
+    rem rem /**
+    rem rem * Method onTBarBtnADEPush:
+    rem rem * Event handler for the ADE toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnADEPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnINSPush:
+    rem rem * Event handler for the INS toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnINSPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnEDBPush:
+    rem rem * Event handler for the EDB toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnEDBPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDELPush:
+    rem rem * Event handler for the DEL toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDELPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnSAVPush:
+    rem rem * Event handler for the SAV toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnSAVPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnRUNPush:
+    rem rem * Event handler for the RUN toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnRUNPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnFNDPush:
+    rem rem * Event handler for the FND toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnFNDPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnDMRPush:
+    rem rem * Event handler for the DMR toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnDMRPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnEXPPush:
+    rem rem * Event handler for the EXP toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnEXPPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnCALPush:
+    rem rem * Event handler for the CAL toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnCALPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+
+    rem rem /**
+    rem rem * Method onTBarBtnOPTPush:
+    rem rem * Event handler for the OPT toolbar button
+    rem rem * @param BBjButtonPushEvent Button Push
+    rem rem */
+    rem method public void onTBarBtnOPTPush(BBjButtonPushEvent pEvent!)
+    rem methodend
+    rem /** DLG_WIZ_OPTION_END("toolbar[Options Entry Grid]") **/
+    
+
+	rem /**
+	rem  * Method FulltextSearch__ON_CLOSE: 
+	rem  * Event handler for the ON_CLOSE event for FulltextSearch
+	rem  * @param BBjCloseEvent
+	rem  */
+	method public void FulltextSearch__ON_CLOSE(BBjCloseEvent pEvent!)
+		#postCancelAnswer()
+	methodend
+
+	rem /**
+	rem  * Method FulltextSearchGrid__ON_GRID_DOUBLE_CLICK: 
+	rem  * Event handler for the ON_GRID_DOUBLE_CLICK event for FulltextSearchGrid
+	rem  * @param BBjGridDoubleClickEvent
+	rem  */
+	method public void FulltextSearchGrid__ON_GRID_DOUBLE_CLICK(BBjGridDoubleClickEvent pEvent!)
+		row = pEvent!.getRow()
+		col = pEvent!.getColumn()
+		grid! = #C_FulltextSearch!.getControl(100)
+		cust$ = grid!.getCellText(row,0)
+		#CustNum = num(cust$) 
+		#postReturnAnswer()
+	methodend
+
+classend
+
+declare FulltextSearch myDialog!
+myDialog! = new FulltextSearch()
+
+rem /** DLGWIZ_SET_BEGIN **/
+rem /** DLGWIZ_SET_END **/
+
+input "Search?",s$
+myDialog!.setSearch(s$)
+
+if myDialog!.doModal() and info(3,6)<>"5" then
+
+    print "Customer: ",myDialog!.getCustNum()
+    input "Press ENTER to release",dummy$
+endif
+
+release

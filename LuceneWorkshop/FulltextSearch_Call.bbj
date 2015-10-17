@@ -1,0 +1,54 @@
+enter x$
+
+ch=unt
+open (ch)"X0"
+sg! = BBjAPI().getSysGui()
+res = sg!.resOpen("FulltextSearch.arc")
+
+wnd! = sg!.createTopLevelWindow(res,101)
+wnd!.setCallback(wnd!.ON_CLOSE,"byebye")
+
+SQLOPEN (1)"TC"
+SQLPREP (1)"CALL BBJ_INDEX('CUSTOMER',?,0)"
+SQLEXEC (1)x$
+DIM rec$:SQLTMPL(1)
+
+c=0
+v! = new BBjVector() 
+while 1
+    rec$= SQLFETCH(1,end=*break)
+    v!.addItem(rec.CUST_NUM$)
+    v!.addItem(rec.FIRST_NAME$+" "+rec.LAST_NAME$+", "+rec.CITY$+", "+rec.ST$)
+    c=c+1
+wend
+SQLCLOSE (1)
+
+grid! = wnd!.getControl(100)
+grid!.setHasColumnHeader(1)
+grid!.setColumnWidth(0,300)
+grid!.setFitToGrid(BBjGrid.AUTO_RESIZE_LAST_COLUMN)
+grid!.setColumnAlignment(0,BBjGrid.GRID_ALIGN_LEFT)
+grid!.setColumnAlignment(1,BBjGrid.GRID_ALIGN_LEFT)
+grid!.setSelectionMode(BBjGrid.GRID_SELECT_ROW) 
+grid!.setNumRows(c)
+grid!.setCellText(0,0,v!)
+
+grid!.setCallback(BBjAPI.ON_GRID_DOUBLE_CLICK,"select")
+
+process_events
+
+byebye:
+    x$=""
+    goto cleanup
+    
+    
+select:
+    declare auto BBjGridDoubleClickEvent ev!
+    ev! = BBjAPI().getLastEvent()
+    row = ev!.getRow()
+    x$=v!.getItem(r*2)
+    goto cleanup
+
+cleanup:
+    wnd!.destroy()
+    exit
